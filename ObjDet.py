@@ -55,12 +55,11 @@ class VideoStream:
 # Helps call/find files from the command prompt/terminal
 parser = argparse.ArgumentParser()
 
-# Arguments
-parser.add_argument('--model', help='Folder .tflite file is located.', required=True)
-
+# Positional Argument
+parser.add_argument('--model', help='Folder .tflite file is located.', required=True)		# parser.add_argument('model', help=...)
 # Optional Arguments
-parser.add_argument('--graph', help='Name of .tflite file', default='detect.tflite')
-parser.add_argument('--label', help='Name of the labelmap file, if different than labelmap.txt')
+parser.add_argument('--graph', help='Name of .tflite file', default = 'detect.tflite')
+parser.add_argument('--label', help='Name of the labelmap file', default = 'labelmap.txt')
 parser.add_argument('--resolution', help='Webcam resolution in WxH.', default='1280x720')
 parser.add_argument('--threshold', help='Minimum threshold to display detected objects', default= 0.5)
 
@@ -114,11 +113,16 @@ if labels[0] == '???':
 # tflite.Interpreter()
 interpreter = Interpreter(model_path = CKPT_PATH)      
 
+# Neds to be called. TFLite pre-plans tensor allocations to optimize inference
 interpreter.allocate_tensors()
 
 # Get model details
+# Each item as a dictionary with details (name, index, shape, dtype) 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+
 height = input_details[0]['shape'][1]
 width = input_details[0]['shape'][2]
 
@@ -164,9 +168,9 @@ while True:
     interpreter.invoke()
 
     # Retrieve detection results
-    boxes = interpreter.get_tensor(output_details[boxes_idx]['index'])[0] # Bounding box coordinates of detected objects
-    classes = interpreter.get_tensor(output_details[classes_idx]['index'])[0] # Class index of detected objects
-    scores = interpreter.get_tensor(output_details[scores_idx]['index'])[0] # Confidence of detected objects
+    boxes = interpreter.get_tensor(output_details[boxes_idx]['index'])[0] 	# Bounding box coordinates of detected objects
+    classes = interpreter.get_tensor(output_details[classes_idx]['index'])[0] 	# Class index of detected objects
+    scores = interpreter.get_tensor(output_details[scores_idx]['index'])[0] 	# Confidence of detected objects
 
     # Loop over all detections and draw detection box if confidence is above minimum threshold
     for i in range(len(scores)):
@@ -182,14 +186,14 @@ while True:
             cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
 
             # Draw label
-            object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-            label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
-            labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
-            label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
+            object_name = labels[int(classes[i])] 							# Look up object name from "labels" array using class index
+            label = '%s: %d%%' % (object_name, int(scores[i]*100)) 					# Example: 'person: 72%'
+            labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)		# Get font size
+            label_ymin = max(ymin, labelSize[1] + 10) 							# Make sure not to draw label too close to top of window
             cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
             cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
 
-
+#-------------------------------------------------------------------------------------------------------------------------------------------------
 
     # Draw framerate in corner of frame
     cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
