@@ -1,8 +1,8 @@
 # Import packages
 import os
-import argparse
 import cv2
 import numpy as np
+import argparse
 import sys
 import time
 from threading import Thread
@@ -14,7 +14,7 @@ import importlib.util
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
-    def __init__(self,resolution=(640,480), framerate=30):
+    def __init__(self, resolution=(640,480), framerate=30):
         # Initialize the PiCamera and the camera image stream
         self.stream = cv2.VideoCapture(0)
         ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
@@ -56,7 +56,7 @@ class VideoStream:
 parser = argparse.ArgumentParser()
 
 # Positional Argument
-parser.add_argument('--model', help='Folder .tflite file is located.', required=True)		# parser.add_argument('model', help=...)
+parser.add_argument('--model', help='Folder .tflite file is located.', required=True)				# parser.add_argument('model', help=...)
 # Optional Arguments
 parser.add_argument('--graph', help='Name of .tflite file', default = 'detect.tflite')
 parser.add_argument('--label', help='Name of the labelmap file', default = 'labelmap.txt')
@@ -66,7 +66,7 @@ parser.add_argument('--threshold', help='Minimum threshold to display detected o
 # Breaks arguments
 args = parser.parse_args()
 
-MODEL= args.model                                    # MODEL = parser.parser_args().model
+MODEL= args.model                                    								# MODEL = parser.parser_args().model
 GRAPH = args.graph
 LABELMAP = args.label
 resW, resH = args.resolution.split('x')
@@ -80,23 +80,16 @@ min_threshold = float(args.threshold)
 pkg = importlib.util.find_spec('tflite_runtime')
 if pkg:
     from tflite_runtime.interpreter import Interpreter
-    if use_TPU:
-        from tflite_runtime.interpreter import load_delegate
 else:
     from tensorflow.lite.python.interpreter import Interpreter
-    if use_TPU:
-        from tensorflow.lite.python.interpreter import load_delegate
-      
-#-------------------------------------------------------------------------------------------------------------------------------------------------
+       
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
 
-# Path to current working directory
-CWD_PATH = os.getcwd()
-# Path to .tflite file containing model 
-CKPT_PATH = os.path.join(CWD_PATH, MODEL, GRAPH)                    # Current dir to Model dir, finds model file 
-# Path to label map file
-LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Current dir to Model dir, finds label file
+CWD_PATH = os.getcwd()						    # Path of current working directory
+CKPT_PATH = os.path.join(CWD_PATH, MODEL, GRAPH)                    # Path to file: Current dir to Model dir, finds model file 
+LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Path to file: Current dir to Model dir, finds label file
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # Opens and Loads the label file 
 with open(LABELS_PATH, 'r') as f:
@@ -107,17 +100,15 @@ with open(LABELS_PATH, 'r') as f:
 if labels[0] == '???':
     del(labels[0])
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # Load the TFLite model to use.
-# tflite.Interpreter()
-interpreter = Interpreter(model_path = CKPT_PATH)      
+interpreter = Interpreter(model_path = CKPT_PATH)     				 # tflite.Interpreter()
 
-# Neds to be called. TFLite pre-plans tensor allocations to optimize inference
+# Needs to be called. TFLite pre-plans tensor allocations to optimize inference
 interpreter.allocate_tensors()
 
-# Get model details
-# Each item as a dictionary with details (name, index, shape, dtype) 
+# Model details. Each item as a dictionary with details (name, index, shape, dtype) 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
@@ -198,7 +189,7 @@ while True:
     # Draw framerate in corner of frame
     cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
     # All the results have been drawn on the frame, so it's time to display it.
-    cv2.imshow('Object detector', frame)
+    cv2.imshow('Object detection', frame)
 
     # Calculate framerate
     t2 = cv2.getTickCount()
