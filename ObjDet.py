@@ -97,7 +97,15 @@ if labels[0] == '???':
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
-
+# WILL COME BACK TO UNDERSTAND
+# Import TensorFlow libraries
+pkg = importlib.util.find_spec('tflite_runtime')
+if pkg:
+    from tflite_runtime.interpreter import Interpreter
+else:
+    from tensorflow.lite.python.interpreter import Interpreter
+       
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # Load the TFLite model to use.
 interpreter = Interpreter(model_path = CKPT_PATH)     				 # tflite.Interpreter()
@@ -122,7 +130,6 @@ outname = output_details[0]['name']
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-
 if ('StatefulPartitionedCall' in outname): # This is a TF2 model
     boxes_idx, classes_idx, scores_idx = 1, 3, 0
 else: # This is a TF1 model
@@ -133,7 +140,7 @@ frame_rate_calc = 1
 freq = cv2.getTickFrequency()
 
 # Initialize video stream
-videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
+videostream = VideoStream(resolution=(imW,imH), framerate=30).start()
 time.sleep(1)
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
@@ -164,6 +171,10 @@ while True:
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 	
     # Loop over all detections and draw detection box if confidence is above minimum threshold
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    txt_thickness = 2
+    font_size = 1
+
     for i in range(len(scores)):
         if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
             # Get bounding box coordinates and draw box
@@ -176,20 +187,17 @@ while True:
             cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (10, 255, 0), 2)			# rect around frame from min & max, (R, G, B), and thickness
 
             # Draw labels
-	    # REMINDER: 'lables' changed to 'classLabels'	
+	    # REMINDER: 'lables' changed to 'classLabels'
             object_name = labels[int(classes[i])] 							# Look up object name from "labels" array using class index
             label = '%s: %d%%' % (object_name, int(scores[i]*100)) 					# Example: 'person: 72%'
-            labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)		# Get font size
+            labelSize, baseLine = cv2.getTextSize(label, font, 0.7, txt_thickness)			# Get font size
             label_ymin = max(y_min, labelSize[1] + 10) 							# Make sure not to draw label too close to top of window
             cv2.rectangle(frame, (x_min, label_ymin-labelSize[1]-10), (x_min + labelSize[0], label_ymin + baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-            cv2.putText(frame, label, (x_min, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
+            cv2.putText(frame, label, (x_min, label_ymin-7), font, 0.7, (0, 0, 0), txt_thickness) # Draw label text
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
     # Draw FPS in corner of frame #
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_size = 1
-    txt_thickness = 2
     cv2.putText(frame, 'FPS: {0:.2f}'.format(frame_rate_calc), (30,50), font, font_size, (255,255,0), txt_thickness, cv2.LINE_AA)
     
     # All the results have been drawn on the frame, so it's time to display it.
