@@ -75,16 +75,6 @@ min_threshold = float(args.threshold)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-# WILL COME BACK TO UNDERSTAND
-# Import TensorFlow libraries
-pkg = importlib.util.find_spec('tflite_runtime')
-if pkg:
-    from tflite_runtime.interpreter import Interpreter
-else:
-    from tensorflow.lite.python.interpreter import Interpreter
-       
-#-------------------------------------------------------------------------------------------------------------------------------------------------#
-
 CWD_PATH = os.getcwd()						    # Path of current working directory
 CKPT_PATH = os.path.join(CWD_PATH, MODEL, GRAPH)                    # Path to file: Current dir to Model dir, finds model file 
 LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Path to file: Current dir to Model dir, finds label file
@@ -106,6 +96,8 @@ if labels[0] == '???':
     del(labels[0])
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
+
+
 
 # Load the TFLite model to use.
 interpreter = Interpreter(model_path = CKPT_PATH)     				 # tflite.Interpreter()
@@ -194,15 +186,19 @@ while True:
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-    # Draw framerate in corner of frame
-    cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
+    # Draw FPS in corner of frame #
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_size = 1
+    txt_thickness = 2
+    cv2.putText(frame, 'FPS: {0:.2f}'.format(frame_rate_calc), (30,50), font, font_size, (255,255,0), txt_thickness, cv2.LINE_AA)
+    
     # All the results have been drawn on the frame, so it's time to display it.
-    cv2.imshow('Object detection', frame)
+    cv2.imshow('Object Detection', frame)
 
-    # Calculate framerate
+    # Calculate framerate (FPS)
     t2 = cv2.getTickCount()
-    time1 = (t2-t1)/freq
-    frame_rate_calc= 1/time1
+    time1 = (t2-t1) / freq
+    frame_rate_calc= 1 / time1
 
     # Press 'q' to quit
     if cv2.waitKey(1) == ord('q'):
