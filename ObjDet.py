@@ -91,10 +91,15 @@ LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Path to fi
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
-# Opens and Loads the label file 
+# Opens and Loads the labels file 
+classLabels = []
 with open(LABELS_PATH, 'r') as f:
-    labels = [line.strip() for line in f.readlines()]
-  
+    classLabels = [line.strip() for line in f.readlines()]		# variable name 'labels' changed to 'classLabels'
+	
+# replace line 97 with following?
+for i in f.readlines():
+	classLabels.append(i.strip())
+	
 # A weird fix for label map if using the COCO "starter model". First label is '???', which has to be removed. 
 # Not sure if COCO starter model will be used.
 if labels[0] == '???':
@@ -112,8 +117,6 @@ interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------
-
 height = input_details[0]['shape'][1]
 width = input_details[0]['shape'][2]
 
@@ -124,6 +127,9 @@ input_std = 127.5
 # Check output layer name to determine if this model was created with TF2 or TF1,
 # because outputs are ordered differently for TF2 and TF1 models
 outname = output_details[0]['name']
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 if ('StatefulPartitionedCall' in outname): # This is a TF2 model
     boxes_idx, classes_idx, scores_idx = 1, 3, 0
@@ -163,26 +169,28 @@ while True:
     classes = interpreter.get_tensor(output_details[classes_idx]['index'])[0] 	# Class index of detected objects
     scores = interpreter.get_tensor(output_details[scores_idx]['index'])[0] 	# Confidence of detected objects
 
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+	
     # Loop over all detections and draw detection box if confidence is above minimum threshold
     for i in range(len(scores)):
         if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-
             # Get bounding box coordinates and draw box
             # Interpreter can return coordinates that are outside of image dimensions, need to force them to be within image using max() and min()
-            ymin = int(max(1,(boxes[i][0] * imH)))
-            xmin = int(max(1,(boxes[i][1] * imW)))
-            ymax = int(min(imH,(boxes[i][2] * imH)))
-            xmax = int(min(imW,(boxes[i][3] * imW)))
+	    x_min = int(max(1, (boxes[i][1] * imW)))    
+	    y_min = int(max(1, (boxes[i][0] * imH)))
+            x_max = int(min(imW, (boxes[i][3] * imW)))
+	    y_max = int(min(imH, (boxes[i][2] * imH)))
+           
+            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (10, 255, 0), 2)			# rect around frame from min & max, (R, G, B), and thickness
 
-            cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
-
-            # Draw label
+            # Draw labels
+	    # REMINDER: 'lables' changed to 'classLabels'	
             object_name = labels[int(classes[i])] 							# Look up object name from "labels" array using class index
             label = '%s: %d%%' % (object_name, int(scores[i]*100)) 					# Example: 'person: 72%'
             labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)		# Get font size
-            label_ymin = max(ymin, labelSize[1] + 10) 							# Make sure not to draw label too close to top of window
-            cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-            cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
+            label_ymin = max(y_min, labelSize[1] + 10) 							# Make sure not to draw label too close to top of window
+            cv2.rectangle(frame, (x_min, label_ymin-labelSize[1]-10), (x_min + labelSize[0], label_ymin + baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
+            cv2.putText(frame, label, (x_min, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
