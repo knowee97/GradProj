@@ -10,8 +10,8 @@ import importlib.util
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-## WILL COME BACK TO UNDERSTAND. Source Link in Trello
-# Define VideoStream class to handle streaming of video from webcam in separate processing thread
+# Source Link in Trello
+# Define VideoStream class with separate Thread : Smoother video feed
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
     def __init__(self, resolution=(640,480), framerate=30):
@@ -58,8 +58,8 @@ parser = argparse.ArgumentParser()
 # Positional Argument
 parser.add_argument('--model', help='Folder .tflite file is located.', required=True)				# parser.add_argument('model', help=...)
 # Optional Arguments
-parser.add_argument('--graph', help='Name of .tflite file', default = 'detect.tflite')
-parser.add_argument('--label', help='Name of the labelmap file', default = 'labelmap.txt')
+parser.add_argument('--graph', help='Name of .tflite file', default = 'YOLOv8sModel.tflite')			# new weight
+parser.add_argument('--label', help='Name of the labelmap file', default = 'detect.yaml')			# yaml file with 8 classes (Trail)
 parser.add_argument('--resolution', help='Webcam resolution in WxH.', default='1280x720')
 parser.add_argument('--threshold', help='Minimum threshold to display detected objects', default= 0.5)
 
@@ -81,17 +81,11 @@ LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Path to fi
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
-# Opens and Loads the labels file 
-classLabels = []
-with open(LABELS_PATH, 'r') as f:		
-    for line in f:
-        classLabels.append(line.strip())
+# Load the labels from YAML file
+with open(LABELS_PATH, 'r') as f:
+    labels_yaml = yaml.safe_load(f)
+    classLabels = labels_yaml['labels']
 	
-# A weird fix for label map if using the COCO "starter model". First label is '???', which has to be removed. 
-# Not sure if COCO starter model will be used.
-if classLabels[0] == '???':
-    del(classlabels[0])
-
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # Import TensorFlow libraries
