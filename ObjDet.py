@@ -83,21 +83,17 @@ LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Path to fi
 
 # Opens and Loads the labels file 
 classLabels = []
-with open(LABELS_PATH, 'r') as f:
-    classLabels = [line.strip() for line in f.readlines()]		# variable name 'labels' changed to 'classLabels'
-	
-# replace line 97 with following?
-for i in f.readlines():
-	classLabels.append(i.strip())
+with open(LABELS_PATH, 'r') as f:		
+    for line in f:
+        classLabels.append(line.strip())
 	
 # A weird fix for label map if using the COCO "starter model". First label is '???', which has to be removed. 
 # Not sure if COCO starter model will be used.
-if labels[0] == '???':
-    del(labels[0])
+if classLabels[0] == '???':
+    del(classlabels[0])
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
-# WILL COME BACK TO UNDERSTAND
 # Import TensorFlow libraries
 pkg = importlib.util.find_spec('tflite_runtime')
 if pkg:
@@ -105,9 +101,7 @@ if pkg:
 else:
     from tensorflow.lite.python.interpreter import Interpreter
        
-#-------------------------------------------------------------------------------------------------------------------------------------------------#
-
-# Load the TFLite model to use.
+# Load TFLite model
 interpreter = Interpreter(model_path = CKPT_PATH)     				 # tflite.Interpreter()
 
 # Needs to be called. TFLite pre-plans tensor allocations to optimize inference
@@ -121,6 +115,8 @@ height = input_details[0]['shape'][1]
 width = input_details[0]['shape'][2]
 
 floating_model = (input_details[0]['dtype'] == np.float32)
+
+# Normalization
 input_mean = 127.5
 input_std = 127.5
 
@@ -130,12 +126,18 @@ outname = output_details[0]['name']
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-if ('StatefulPartitionedCall' in outname): # This is a TF2 model
-    boxes_idx, classes_idx, scores_idx = 1, 3, 0
-else: # This is a TF1 model
-    boxes_idx, classes_idx, scores_idx = 0, 1, 2
+indices =
+{
+    'TF2': (1, 3, 0),
+    'TF1': (0, 1, 2)
+}
 
-# Initialize frame rate calculation
+if 'StatefulPartitionedCall' in outname:
+    boxes_idx, classes_idx, scores_idx = indices['TF2']
+else:
+    boxes_idx, classes_idx, scores_idx = indices['TF1']
+
+# Frame Rate Calc Initialized 
 frame_rate_calc = 1
 freq = cv2.getTickFrequency()
 
@@ -143,19 +145,16 @@ freq = cv2.getTickFrequency()
 videostream = VideoStream(resolution=(imW,imH), framerate=30).start()
 time.sleep(1)
 
-#for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 while True:
-    # Start timer (for calculating frame rate)
-    t1 = cv2.getTickCount()
-    # Grab frame from video stream
-    frame1 = videostream.read()
-    # Acquire frame and resize to expected shape [1xHxWx3]
-    frame = frame1.copy()
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    t1 = cv2.getTickCount() 					# Start timer
+    frame1 = videostream.read()					# Grab frame from video stream
+    
+    frame = frame1.copy()					# Acquire frame and resize to expected shape [1xHxWx3]
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)		# Changes to RGB colorway
     frame_resized = cv2.resize(frame_rgb, (width, height))
     input_data = np.expand_dims(frame_resized, axis=0)
 
-    # Normalize pixel values if using a floating model (i.e. if model is non-quantized)
+    # Normalize pixel values if floating model used (model is non-quantized)
     if floating_model:
         input_data = (np.float32(input_data) - input_mean) / input_std
 
@@ -197,18 +196,16 @@ while True:
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-    # Draw FPS in corner of frame #
+    # Draw FPS in corner of frame
     cv2.putText(frame, 'FPS: {0:.2f}'.format(frame_rate_calc), (30,50), font, font_size, (255,255,0), txt_thickness, cv2.LINE_AA)
     
-    # All the results have been drawn on the frame, so it's time to display it.
     cv2.imshow('Object Detection', frame)
 
-    # Calculate framerate (FPS)
-    t2 = cv2.getTickCount()
+    t2 = cv2.getTickCount()		# End timer
     time1 = (t2-t1) / freq
-    frame_rate_calc= 1 / time1
+    frame_rate_calc= 1 / time1		# Calculate framerate (FPS)
 
-    # Press 'q' to quit
+    # 'q' to quit
     if cv2.waitKey(1) == ord('q'):
         break
 
