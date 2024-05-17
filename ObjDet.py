@@ -52,14 +52,14 @@ class VideoStream:
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-# Helps call/find files from the command prompt/terminal
+# Helps call/find files from the command prompt/terminal. Useful if using differnt graphs and labels.
 parser = argparse.ArgumentParser()
 
 # Positional Argument
-parser.add_argument('--model', help='Folder .tflite file is located.', required=True)				# parser.add_argument('model', help=...)
+parser.add_argument('--model', help='Folder .tflite file is located.', required=True)				# Directory of models/weights
 # Optional Arguments
-parser.add_argument('--graph', help='Name of .tflite file', default = 'YOLOv8sModel.tflite')			# new weight
-parser.add_argument('--label', help='Name of the labelmap file', default = 'detect.yaml')			# yaml file with 8 classes (Trail)
+parser.add_argument('--graph', help='Name of .tflite file', default = 'YOLOv8sModel.tflite')			# Model/weight to use from directory
+parser.add_argument('--label', help='Name of the labelmap file', default = 'detect.yaml')			# yaml file with 8 classes (Trial: In Same directory)
 parser.add_argument('--resolution', help='Webcam resolution in WxH.', default='1280x720')
 parser.add_argument('--threshold', help='Minimum threshold to display detected objects', default= 0.5)
 
@@ -69,8 +69,8 @@ args = parser.parse_args()
 MODEL= args.model                                    								# MODEL = parser.parser_args().model
 GRAPH = args.graph
 LABELMAP = args.label
-resW, resH = args.resolution.split('x')
-imW, imH = int(resW), int(resH)
+resW, resH = args.resolution.split('x')										# Split using 'x' in resolution
+imW, imH = int(resW), int(resH)											# Convert vals to int
 min_threshold = float(args.threshold)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
