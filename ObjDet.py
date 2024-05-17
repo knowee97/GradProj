@@ -15,40 +15,32 @@ import importlib.util
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
     def __init__(self, resolution=(640,480), framerate=30):
-        # Initialize the PiCamera and the camera image stream
-        self.stream = cv2.VideoCapture(0)
+        self.stream = cv2.VideoCapture(0)						 # Initialize the PiCamera and the camera image stream
         ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret = self.stream.set(3,resolution[0])
         ret = self.stream.set(4,resolution[1])
-        # Read first frame from the stream
-        (self.grabbed, self.frame) = self.stream.read()
-	# Variable to control when the camera is stopped
+	    
+        (self.grabbed, self.frame) = self.stream.read()		        		# Read first frame from the stream
+
         self.stopped = False
 
     def start(self):
-	# Start the thread that reads frames from the video stream
-        Thread(target=self.update,args=()).start()
+        Thread(target=self.update,args=()).start()					# Start thread to stream
         return self
 
     def update(self):
-        # Keep looping indefinitely until the thread is stopped
-        while True:
-            # If the camera is stopped, stop the thread
+        while True:									# Will stop stream when asked 
             if self.stopped:
-                # Close camera resources
                 self.stream.release()
                 return
 
-            # Otherwise, grab the next frame from the stream
-            (self.grabbed, self.frame) = self.stream.read()
+            (self.grabbed, self.frame) = self.stream.read()				# Grabs next frame from the stream if not stopped
 
     def read(self):
-	# Return the most recent frame
         return self.frame
 
     def stop(self):
-	# Indicate that the camera and thread should be stopped
-        self.stopped = True
+        self.stopped = True								# Indicates camera and thread stopped
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -75,28 +67,28 @@ min_threshold = float(args.threshold)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
-CWD_PATH = os.getcwd()						    # Path of current working directory
-CKPT_PATH = os.path.join(CWD_PATH, MODEL, GRAPH)                    # Path to file: Current dir to Model dir, finds model file 
-LABELS_PATH = os.path.join(CWD_PATH, MODEL, LABELMAP)               # Path to file: Current dir to Model dir, finds label file
+wd_path = os.getcwd()						    # Path of current working directory
+created_path = os.path.join(wd_path, MODEL, GRAPH)                     # Path to file: Current dir to Model dir, finds model file 
+labels_path = os.path.join(created_path, MODEL, LABELMAP)               # Path to file: Current dir to Model dir, finds label file
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # Load the labels from YAML file
-with open(LABELS_PATH, 'r') as f:
+with open(labels_path, 'r') as f:
     labels_yaml = yaml.safe_load(f)
     classLabels = labels_yaml['labels']
 	
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # Import TensorFlow libraries
-pkg = importlib.util.find_spec('tflite_runtime')
+pkg = importlib.util.find_spec('tflite_runtime')					# NOT SURE IF NEEDED. COULD JUST BE LINE 88 TO USE
 if pkg:
     from tflite_runtime.interpreter import Interpreter
 else:
     from tensorflow.lite.python.interpreter import Interpreter
        
 # Load TFLite model
-interpreter = Interpreter(model_path = CKPT_PATH)     				 # tflite.Interpreter()
+interpreter = Interpreter(model_path = created_path)     				 # tflite.Interpreter()
 
 # Needs to be called. TFLite pre-plans tensor allocations to optimize inference
 interpreter.allocate_tensors()
@@ -110,9 +102,8 @@ width = input_details[0]['shape'][2]
 
 floating_model = (input_details[0]['dtype'] == np.float32)
 
-# Normalization
-input_mean = 127.5
-input_std = 127.5
+# Normalization. StandardScaler() not optimized for real-time image processing.
+input_mean, input_std = 127.5 , 127.5
 
 # Check output layer name to determine if this model was created with TF2 or TF1,
 # because outputs are ordered differently for TF2 and TF1 models
@@ -139,6 +130,49 @@ freq = cv2.getTickFrequency()
 videostream = VideoStream(resolution=(imW,imH), framerate=30).start()
 time.sleep(1)
 
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+
+def detection_results(interpreter, output_details, boxes_idx, classes_idx, scores_idx):
+    	boxes = interpreter.get_tensor(output_details[boxes_idx]['index'])[0]  		 # Bounding box coordinates
+    	classes = interpreter.get_tensor(output_details[classes_idx]['index'])[0]  	 # Class index
+    	scores = interpreter.get_tensor(output_details[scores_idx]['index'])[0]  	 # Confidence
+    	return boxes, classes, scores
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+
+def draw_detection_boxes(frame, boxes, classes, scores, classLabels, imW, imH, min_conf_threshold=0.5):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    txt_thickness = 2
+    font_size = 1
+
+    for i in range(len(scores)):
+        if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
+            # Get bounding box coordinates and draw box
+            x_min = int(max(1, (boxes[i][1] * imW)))
+            y_min = int(max(1, (boxes[i][0] * imH)))
+            x_max = int(min(imW, (boxes[i][3] * imW)))
+            y_max = int(min(imH, (boxes[i][2] * imH)))
+
+            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (10, 255, 0), 2)
+
+            # Draw labels
+            object_name = classLabels[int(classes[i])] 						     # Look up object name from "classLabels" array using class index
+            label = f'{object_name}: {int(scores[i] * 100)}%'  				             # Example: 'person: 72%'
+            labelSize, baseLine = cv2.getTextSize(label, font, 0.7, txt_thickness)
+            label_ymin = max(y_min, labelSize[1] + 10)  					     # draw label not too close to top of window
+		
+            cv2.rectangle(frame,								     # Draw a rectangle on given image
+			  (x_min, label_ymin - labelSize[1] - 10), 
+                          (x_min + labelSize[0], label_ymin + baseLine - 10), 
+                          (255, 255, 255),
+			  cv2.FILLED)  					     
+            cv2.putText(frame, label, 					     			     # Label text on the rectangle
+			(x_min, label_ymin - 7), 
+			font, 0.7, (0, 0, 0), 
+			txt_thickness)  				     			     # Draw label text
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+
 while True:
     t1 = cv2.getTickCount() 					# Start timer
     frame1 = videostream.read()					# Grab frame from video stream
@@ -156,40 +190,10 @@ while True:
     interpreter.set_tensor(input_details[0]['index'],input_data)
     interpreter.invoke()
 
-    # Retrieve detection results
-    boxes = interpreter.get_tensor(output_details[boxes_idx]['index'])[0] 	# Bounding box coordinates of detected objects
-    classes = interpreter.get_tensor(output_details[classes_idx]['index'])[0] 	# Class index of detected objects
-    scores = interpreter.get_tensor(output_details[scores_idx]['index'])[0] 	# Confidence of detected objects
+    boxes, classes, scores = get_detection_results(interpreter, output_details, boxes_idx, classes_idx, scores_idx)
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------
+    draw_detection_boxes(frame, boxes, classes, scores, classLabels, imW, imH, min_threshold)
 	
-    # Loop over all detections and draw detection box if confidence is above minimum threshold
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    txt_thickness = 2
-    font_size = 1
-
-    for i in range(len(scores)):
-        if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
-            # Get bounding box coordinates and draw box
-            # Interpreter can return coordinates that are outside of image dimensions, need to force them to be within image using max() and min()
-	    x_min = int(max(1, (boxes[i][1] * imW)))    
-	    y_min = int(max(1, (boxes[i][0] * imH)))
-            x_max = int(min(imW, (boxes[i][3] * imW)))
-	    y_max = int(min(imH, (boxes[i][2] * imH)))
-           
-            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (10, 255, 0), 2)			# rect around frame from min & max, (R, G, B), and thickness
-
-            # Draw labels
-	    # REMINDER: 'lables' changed to 'classLabels'
-            object_name = labels[int(classes[i])] 							# Look up object name from "labels" array using class index
-            label = '%s: %d%%' % (object_name, int(scores[i]*100)) 					# Example: 'person: 72%'
-            labelSize, baseLine = cv2.getTextSize(label, font, 0.7, txt_thickness)			# Get font size
-            label_ymin = max(y_min, labelSize[1] + 10) 							# Make sure not to draw label too close to top of window
-            cv2.rectangle(frame, (x_min, label_ymin-labelSize[1]-10), (x_min + labelSize[0], label_ymin + baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-            cv2.putText(frame, label, (x_min, label_ymin-7), font, 0.7, (0, 0, 0), txt_thickness) # Draw label text
-
-#-------------------------------------------------------------------------------------------------------------------------------------------------
-
     # Draw FPS in corner of frame
     cv2.putText(frame, 'FPS: {0:.2f}'.format(frame_rate_calc), (30,50), font, font_size, (255,255,0), txt_thickness, cv2.LINE_AA)
     
