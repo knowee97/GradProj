@@ -51,7 +51,7 @@ while True:
             class_id = int(boxes.cls[i].numpy())           # Class ID: results.boxes.cls
             label = model.names[class_id]
 
-            if label in ['car', 'truck', 'person', 'bus]:
+            if label in ['car', 'truck', 'person', 'bus']:
                 x1, y1, x2, y2 = box                       # Box Coordinates
                 center = ((x1 + x2) // 2, (y1 + y2) // 2)
                 track_id = (label, i)                      # ID from label and index
