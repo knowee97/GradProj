@@ -1,0 +1,21 @@
+description: Ultralytics best model trained on /content/datasets/detect/detect/detect.yaml
+author: Ultralytics
+date: '2024-06-11T19:46:08.264915'
+version: 8.2.26
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: person
+  1: bicycle
+  2: car
+  3: motorcycle
+  4: airplane
+  5: bus
+  6: train
+  7: truck
